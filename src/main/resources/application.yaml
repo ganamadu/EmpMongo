@@ -1,0 +1,52 @@
+app:
+  name: spring-boot-app
+server:
+  port: 8082
+
+spring:
+  application:
+    name: emp-service
+  data:
+    mongodb:
+      host: localhost
+      port: 27017
+      database: employeedb
+  cache:
+    type: redis
+    host: "localhost"
+    port: 6379
+    maxTotalConnections: 1
+    maxIdleConnections: 1
+    minIdleConnections: 1
+    connectTimeout: 100
+    redis:
+      time-to-live: P10M
+      #      auth: "******A5hw",
+      encoding: "UTF-8"
+  #      operationTimeoutInMillis: 300
+  jpa:
+    properties:
+      hibernate:
+        format_sql: true
+
+logging:
+  config: classpath:log4j2-spring.xml
+  level:
+    root: info
+    com.empmongo: debug
+    org:
+      springframework:
+        data:
+          mongodb:
+            core:
+              ReactiveMongoTemplate: INFO
+          document:
+            mongodb: INFO
+
+log4j:
+  category:
+    org:
+      springframework:
+        data:
+          document:
+            mongodb: INFO

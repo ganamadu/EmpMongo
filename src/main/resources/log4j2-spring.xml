@@ -1,0 +1,62 @@
+<!--<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="DEBUG"> &lt;!&ndash; Set to DEBUG for detailed logs &ndash;&gt;
+    <Appenders>
+        <Console name="ConsoleAppender" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{yyyy-MM-dd'T'HH:mm:ss.SSSZ} [%X{X-Transaction-ID}] [%t] %-5level %logger{36} - %msg%n"/>
+        </Console>
+
+        <SplunkHttp name="SplunkAppender"
+                    url="https://localhost:8088"
+                    token="98583f12-68d9-4d06-96be-386745fa103b"
+                    index="stud_api_dev"
+                    source="http:studentapidev"
+                    sourcetype="slf4j"
+                    messageFormat="json"
+                    disableCertificateValidation="true">
+            <PatternLayout pattern="%d{yyyy-MM-dd'T'HH:mm:ss.SSSZ} [%X{X-Transaction-ID}] [%t] %-5level %logger{36} - %msg%n"/>
+        </SplunkHttp>
+    </Appenders>
+
+    <Loggers>
+        <Root level="INFO">
+            <AppenderRef ref="ConsoleAppender"/>
+            <AppenderRef ref="SplunkAppender"/>
+        </Root>
+    </Loggers>
+</Configuration>-->
+
+<configuration status="DEBUG">
+
+    <!-- ✅ Console Appender for local debugging -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd'T'HH:mm:ss.SSSZ} [%X{X-Transaction-ID}] [%t] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- ✅ Splunk HTTP Event Collector (HEC) Appender -->
+    <appender name="SPLUNK" class="com.splunk.logging.HttpEventCollectorLogbackAppender">
+        <url>https://localhost:8088</url>  <!-- Update with your Splunk HEC URL -->
+        <token>98583f12-68d9-4d06-96be-386745fa103b</token>  <!-- Replace with your Splunk token -->
+        <source>http:studentapidev</source>
+        <sourcetype>slf4j</sourcetype>
+        <host>localhost</host>
+        <index>stud_api_dev</index>
+        <messageFormat>json</messageFormat>
+
+        <!-- ✅ Disable SSL Certificate Validation -->
+        <disableCertificateValidation>true</disableCertificateValidation>
+
+        <!-- ✅ Proper JSON Logging Format -->
+        <layout class="ch.qos.logback.classic.PatternLayout">
+            <pattern>{"timestamp": "%d{yyyy-MM-dd'T'HH:mm:ss.SSSZ}", "level": "%-5level", "thread": "%thread", "logger": "%logger{36}", "message": "%msg"}%n</pattern>
+        </layout>
+    </appender>
+
+    <!-- ✅ Configure Root Logger -->
+    <root level="info">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="SPLUNK"/>
+    </root>
+
+</configuration>
