@@ -8,6 +8,7 @@ import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 import java.util.UUID;
 
@@ -31,11 +32,13 @@ public class TransactionIdFilter implements WebFilter {
         response.getHeaders().add(TRANSACTION_ID, transactionId);
 
         // Add Transaction ID to MDC (Mapped Diagnostic Context) for log tracing
-        MDC.put(TRANSACTION_ID, transactionId);
+        //MDC.put(TRANSACTION_ID, transactionId);
 
         // Continue the request chain
+        /*return chain.filter(exchange)
+                .doFinally(signalType -> MDC.remove(TRANSACTION_ID));*/ // Clean up MDC after request completes
         return chain.filter(exchange)
-                .doFinally(signalType -> MDC.remove(TRANSACTION_ID)); // Clean up MDC after request completes
+                .contextWrite(Context.of(TRANSACTION_ID, transactionId));
     }
 
 

@@ -22,7 +22,7 @@ public class StudentController {
     @PostMapping
     public Mono<Student> save(@RequestBody Student student) {
         logger.info("Creating the student {}", student);
-        return studentService.saveNew(student);
+        return studentService.save(student);
     }
 
     @GetMapping("/id/{id}")

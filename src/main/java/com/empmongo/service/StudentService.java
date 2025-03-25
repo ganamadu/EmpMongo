@@ -13,10 +13,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.redis.core.ReactiveHashOperations;
 import org.springframework.data.redis.core.ReactiveRedisOperations;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -33,8 +36,11 @@ public class StudentService {
     private final ReactiveRedisOperations<String, Student> redisStudentOperations;
     private final ReactiveHashOperations<String, String, Student> reactiveValueOps;
     private final ReactiveHashOperations<String, String, String> reactiveJsonValueOps;
-    @Autowired
 
+    @Value("${data.redis.readTimeout}")
+    private long readTimeout;
+
+    @Autowired
     public StudentService(StudentRepo studentRepo, ReactiveRedisOperations<String, Student> redisStudentOperations) {
         this.studentRepo = studentRepo;
         this.redisStudentOperations = redisStudentOperations;
@@ -43,14 +49,29 @@ public class StudentService {
     }
 
     public Mono<Student> save(Student student) {
-        logger.info("Calling the save method {}", student);
-        return Mono.just(student)
-                .flatMap(studentRepo::save)
-                .flatMap(stud -> reactiveValueOps.put(KEY, String.valueOf(stud.getSno()), stud)
-                        .doOnEach(val -> logger.info("Setting accountToken in cache + {}", stud.getSno()))
-                        .thenReturn(stud))
-                .onErrorResume(DuplicateKeyException.class,
-                        cause -> getStudentBySno(student.getSno()));
+        String redisKey = "students:subject:" + student.getSubject();
+
+        return studentRepo.findBySno(student.getSno())
+                .flatMap(existingStudent -> {
+                    logger.warn("Student with sno {} already exists. Skipping save.", student.getSno());
+                    return Mono.<Student>error(new DuplicateKeyException("Student with sno " + student.getSno() + " already exists"));
+                })
+                .switchIfEmpty(
+                        Mono.defer(() ->
+                                reactiveValueOps.remove(KEY, redisKey)
+                                        .then(studentRepo.save(student))
+                                        .flatMap(stud ->
+                                                reactiveValueOps.put(KEY, String.valueOf(stud.getSno()), stud)
+                                                        .doOnEach(val -> logger.info("Setting accountToken in cache + {}", stud.getSno()))
+                                                        .thenReturn(stud)
+                                        )
+                        )
+                )
+                .onErrorResume(DuplicateKeyException.class, cause -> {
+                    logger.warn("Duplicate student entry prevented: {}", student.getSno());
+                    return getStudentBySno(student.getSno())
+                            .cast(Student.class);
+                });
     }
 
     public Mono<Student> saveNew(Student student) {
@@ -87,7 +108,7 @@ public class StudentService {
     public Mono<Student> getStudentBySno(Integer sno) {
         logger.info("Fetching student with sno: {} ",sno);
         return reactiveValueOps.get(KEY, String.valueOf(sno))
-                .doOnNext(stud -> logger.info("Fetched from Redis: " + (stud != null ? stud.getId() : "null")))
+                .doOnNext(stud -> logger.info("Fetched from Redis: {} ", (stud != null ? stud.getId() : "null")))
                 .filter(stud -> {
                     boolean isNotPrimaryInActive = !stud.isPrimaryStudent() && !Status.INACTIVE.equals(stud.getStatus());
                     boolean isPrimary = stud.isPrimaryStudent();
@@ -96,7 +117,7 @@ public class StudentService {
                 })
                 .switchIfEmpty(
                         studentRepo.findBySno(sno)
-                                .doOnNext(stud -> logger.info("Fetched from MongoDB: " + (stud != null ? stud.getId() : "null")))
+                                .doOnNext(stud -> logger.info("Fetched from MongoDB: {} ", (stud != null ? stud.getId() : "null")))
                                 .filter(stud -> {
                                     boolean isNotPrimaryInActive = !stud.isPrimaryStudent() && !Status.INACTIVE.equals(stud.getStatus());
                                     boolean isPrimary = stud.isPrimaryStudent();
@@ -108,7 +129,11 @@ public class StudentService {
                                         .thenReturn(stud)
                                 )
                 )
-                .switchIfEmpty(Mono.error(EntityNotFoundException::new));
+                .switchIfEmpty(
+                        Mono.fromRunnable(
+                                () -> logger.info("HttpStatus {} Identifiers Not Found.", HttpStatus.NOT_FOUND))
+                                .then(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "Identifiers Not Found")))
+                );
     }
 
     /*public Flux<Student> findByStudentWithSubjectOld(String subject) {

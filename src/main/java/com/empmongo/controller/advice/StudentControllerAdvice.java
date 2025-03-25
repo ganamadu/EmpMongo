@@ -6,7 +6,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestControllerAdvice
 @RequestMapping(produces = MediaType.APPLICATION_JSON_VALUE)
@@ -21,5 +23,15 @@ public class StudentControllerAdvice {
         standardError.setErrorMessage(entityNotFoundException.getReason());
         return standardError;
     }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<StandardError> handle(ResponseStatusException exception) {
+        StandardError standardError = new StandardError();
+        standardError.setErrorCode(String.valueOf(exception.getStatusCode().value()));
+        standardError.setErrorMessage(exception.getReason());
+        return ResponseEntity.ok(standardError);
+    }
+
+
 
 }

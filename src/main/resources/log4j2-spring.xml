@@ -30,7 +30,8 @@
     <!-- ✅ Console Appender for local debugging -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%d{yyyy-MM-dd'T'HH:mm:ss.SSSZ} [%X{X-Transaction-ID}] [%t] %-5level %logger{36} - %msg%n</pattern>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level [%X{X-Transaction-ID}] %logger - %msg%n</pattern>
+            <!--<pattern>%d{yyyy-MM-dd'T'HH:mm:ss.SSSZ} [%X{X-Transaction-ID}] [%t] %-5level %logger{36} - %msg%n</pattern>-->
         </encoder>
     </appender>
 
